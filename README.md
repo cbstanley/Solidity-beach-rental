@@ -6,7 +6,7 @@ A basic rental smart contract for a beach vacation property. This is a practice 
 
 ----
 #### Basic instructions to run:
-1) Open [Remix](https://remix.ethereum.org) in a browser
+1) Open [Remix](https://remix.ethereum.org) in a browser.
 
 2) Deploy and populate the reserve function. For example:
 
