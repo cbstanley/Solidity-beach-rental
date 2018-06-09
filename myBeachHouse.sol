@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 
 /// @title BeachHouseRental
 contract BeachHouseRental {
-    // Set owner, renter
+    // Owner and renter
     address public owner;
     address public renter;
 
@@ -32,13 +32,13 @@ contract BeachHouseRental {
     // Rental agreement terms
     bool public agreeTerms;
 
-    // Modifier that allows only owner to call
+    // Allows only owner to call
     modifier onlyOwner() {
         require(msg.sender == owner);
         _;
     }
 
-    // Modifier that allows only renter to call
+    // Allows only renter to call
     modifier onlyRenter() {
         require(msg.sender == renter);
         _;
