@@ -26,11 +26,16 @@ contract BeachHouseRental {
     // Total rent price
     uint public rentalTotal;
 
-    // Beach house availability
-    bool public available;
-
     // Rental agreement terms
     bool public agreeTerms;
+    
+    mapping(address => uint256) public balanceOf;
+    
+    event Transfer(
+        address indexed _renter,
+        address indexed _owner,
+        uint256 _value
+    );
 
     // Allows only owner to call
     modifier onlyOwner() {
@@ -61,17 +66,13 @@ contract BeachHouseRental {
         RENTAL_DAILY_RATE = 500000000000000000 wei;  // (5e17 wei = 0.5 ether)
     }
 
-    // @notice BeachHouseRental fallback function.
-    //         Requires rentalTotal to be established (>0)
-    //         and renter to have sufficient funds before
-    //         transferring rental payment to owner.
+    // @notice Renter deposit into contract to pay owner.
+    //         Requires rentalTotal to be established (> 0).
     function deposit() payable external onlyRenter {
         require(rentalTotal > 0);
         require(msg.value == rentalTotal);
-        require(renter.balance >= rentalTotal);
 
-        // Transfer ether from renter to owner
-        owner.transfer(msg.value);
+        balanceOf[owner] += rentalTotal;
 
         // Broadcast to blockchain
         emit Transfer(renter, owner, msg.value);
@@ -79,23 +80,50 @@ contract BeachHouseRental {
         // @dev To Do: Mark calendar dates as rented
     }
 
-    // Setter for renter address
-    function setRenter(address _renter) public {
-        renter = _renter;
-    }
-
     // Check-in day (just enter uint > 0 for now)
-    function setRentalCheckin(uint _rentalCheckin) public {
+    function setRentalCheckin(uint _rentalCheckin) internal {
         rentalCheckin = _rentalCheckin;
     }
 
     // Require rentalDays within min/max and calculate rentalTotal.
-    function setRentalDays(uint _rentalDays) public {
+    function setRentalDays(uint _rentalDays) internal {
         rentalDays = _rentalDays;
         require(rentalDays >= DAYS_MIN && rentalDays <= DAYS_MAX);
         rentalTotal = RENTAL_DAILY_RATE * rentalDays;
     }
 
+    // @notice Renter reservation that ensures parameters are
+    //         valid before proceeding to payment. Will initiate
+    //         renter's address or, if renter re-runs the function,
+    //         will allow _rentalCheckin and _rentalDays to be updated.
+    function reserve(
+        uint _rentalCheckin,
+        uint _rentalDays,
+        bool _agreeTerms
+    )
+      public
+    {
+        require(renter == address(0) || renter == msg.sender);
+        require(checkAvailable(_rentalCheckin, _rentalDays) == true);
+
+        agreeTerms = _agreeTerms;
+        require(_agreeTerms == true);
+
+        if (renter == address(0)) {
+            renter = msg.sender;
+        }
+
+        setRentalCheckin(_rentalCheckin);
+        setRentalDays(_rentalDays);
+    }
+    
+    // @notice Allows funds to be withdrawn from contract.
+    function withdraw(uint amount) public {
+        require(balanceOf[msg.sender] >= amount);
+        balanceOf[msg.sender] -= amount;
+        msg.sender.transfer(amount);
+    }
+    
     // @dev To Do: Update to work as a calendar (currently a test function).
     //
     // Check if rental is available for requested stay.
@@ -103,54 +131,14 @@ contract BeachHouseRental {
         uint _rentalCheckin,
         uint _rentalDays
     )
-        pure internal returns (bool)
+      view internal returns (bool)
     {
-        if(_rentalCheckin > 0 && _rentalDays > 0) {
+        if (_rentalCheckin > 0 &&
+            _rentalDays >= DAYS_MIN &&
+            _rentalDays <= DAYS_MAX) {
             return true;
+        } else {
+            return false;
         }
-    }
-
-    // @notice Renter reservation that ensures params are
-    //         valid before proceeding to payment.
-    function reserve(
-        address _renter,
-        uint _rentalCheckin,
-        uint _rentalDays,
-        bool _agreeTerms
-    )
-      public
-    {
-        setRenter(_renter);
-        setRentalCheckin(_rentalCheckin);
-        setRentalDays(_rentalDays);
-        available = checkAvailable(_rentalCheckin, _rentalDays);
-
-        // Ask renter to agree to rental agreement terms
-        agreeTerms = _agreeTerms;
-
-        require(available == true);
-        require(agreeTerms == true);
-    }
-
-    event Transfer(
-        address indexed _renter,
-        address indexed _owner,
-        uint256 _value
-    );
-
-    // @notice Option for owner to cancel rental and
-    //         return (partial) funds to renter.
-    function cancelRental() public payable onlyOwner {
-        // Only refund up to original rentalTotal
-        require(msg.value <= rentalTotal);
-        renter.transfer(msg.value);
-
-        // Reset parameters
-        renter = address(0);
-        rentalCheckin = 0;
-        rentalDays = 0;
-        rentalTotal = 0;
-        available = false;
-        agreeTerms = false;
     }
 }
