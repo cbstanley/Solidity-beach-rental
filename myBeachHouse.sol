@@ -26,8 +26,11 @@ contract BeachHouseRental {
     // Total rent price
     uint public rentalTotal;
 
-    // Rental agreement terms
+    // Flag for rental agreement terms
     bool public agreeTerms;
+    
+    // Flag for deposit made
+    bool public paid;
     
     mapping(address => uint256) public balanceOf;
     
@@ -35,6 +38,10 @@ contract BeachHouseRental {
         address indexed _renter,
         address indexed _owner,
         uint256 _value
+    );
+    
+    event RentalReserved(
+        bool _paid
     );
 
     // Allows only owner to call
@@ -71,11 +78,15 @@ contract BeachHouseRental {
     function deposit() payable external onlyRenter {
         require(rentalTotal > 0);
         require(msg.value == rentalTotal);
+        require(paid == false);
 
         balanceOf[owner] += rentalTotal;
+        
+        paid = true;
 
         // Broadcast to blockchain
         emit Transfer(renter, owner, msg.value);
+        emit RentalReserved(paid);
 
         // @dev To Do: Mark calendar dates as rented
     }
@@ -104,6 +115,7 @@ contract BeachHouseRental {
       public
     {
         require(renter == address(0) || renter == msg.sender);
+        require(paid == false);
         require(checkAvailable(_rentalCheckin, _rentalDays) == true);
 
         agreeTerms = _agreeTerms;
