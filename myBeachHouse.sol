@@ -28,18 +28,18 @@ contract BeachHouseRental {
 
     // Flag for rental agreement terms
     bool public agreeTerms;
-    
+
     // Flag for deposit made
     bool public paid;
-    
+
     mapping(address => uint256) public balanceOf;
-    
+
     event Transfer(
         address indexed _renter,
         address indexed _owner,
         uint256 _value
     );
-    
+
     event RentalReserved(
         bool _paid
     );
@@ -74,14 +74,15 @@ contract BeachHouseRental {
     }
 
     // @notice Renter deposit into contract to pay owner.
-    //         Requires rentalTotal to be established (> 0).
+    //         Requires rentalTotal to be established (> 0)
+    //         and a single, initial deposit (paid == false).
     function deposit() payable external onlyRenter {
         require(rentalTotal > 0);
         require(msg.value == rentalTotal);
         require(paid == false);
 
         balanceOf[owner] += rentalTotal;
-        
+
         paid = true;
 
         // Broadcast to blockchain
@@ -91,6 +92,16 @@ contract BeachHouseRental {
         // @dev To Do: Mark calendar dates as rented
     }
 
+    // Option for owner to deposit funds back into contract
+    function ownerDeposit() payable external onlyOwner {
+        balanceOf[owner] += msg.value;
+    }
+
+    // Get current balance of contract
+    function getBalance() view public returns (uint balance) {
+        return address(this).balance;
+    }
+
     // Check-in day (just enter uint > 0 for now)
     function setRentalCheckin(uint _rentalCheckin) internal {
         rentalCheckin = _rentalCheckin;
@@ -98,8 +109,8 @@ contract BeachHouseRental {
 
     // Require rentalDays within min/max and calculate rentalTotal.
     function setRentalDays(uint _rentalDays) internal {
+        require(_rentalDays >= DAYS_MIN && _rentalDays <= DAYS_MAX);
         rentalDays = _rentalDays;
-        require(rentalDays >= DAYS_MIN && rentalDays <= DAYS_MAX);
         rentalTotal = RENTAL_DAILY_RATE * rentalDays;
     }
 
@@ -107,6 +118,7 @@ contract BeachHouseRental {
     //         valid before proceeding to payment. Will initiate
     //         renter's address or, if renter re-runs the function,
     //         will allow _rentalCheckin and _rentalDays to be updated.
+    //         Once deposit() is successfully run, reserve() is disabled.
     function reserve(
         uint _rentalCheckin,
         uint _rentalDays,
@@ -128,14 +140,35 @@ contract BeachHouseRental {
         setRentalCheckin(_rentalCheckin);
         setRentalDays(_rentalDays);
     }
-    
+
     // @notice Allows funds to be withdrawn from contract.
+    //         Can be called by owner or renter (if given a refund).
     function withdraw(uint amount) public {
         require(balanceOf[msg.sender] >= amount);
         balanceOf[msg.sender] -= amount;
         msg.sender.transfer(amount);
     }
-    
+
+    // @notice Option for owner to (partially) refund to renter.
+    //         Renter then uses withdraw() to pull funds.
+    function ownerRefund(uint amount) payable public onlyOwner {
+        // Only refund up to original rentalTotal
+        require(amount <= rentalTotal);
+        balanceOf[msg.sender] -= amount;
+        balanceOf[renter] += amount;
+    }
+
+    // @notice Option for owner to cancel rental and reset values.
+    function ownerCancel() public onlyOwner {
+        require(balanceOf[msg.sender] >= rentalTotal);
+        ownerRefund(rentalTotal);
+        rentalCheckin = 0;
+        rentalDays = 0;
+        rentalTotal = 0;
+        agreeTerms = false;
+        paid = false;
+    }
+
     // @dev To Do: Update to work as a calendar (currently a test function).
     //
     // Check if rental is available for requested stay.
