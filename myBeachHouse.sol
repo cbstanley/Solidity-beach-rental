@@ -102,18 +102,6 @@ contract BeachHouseRental {
         return address(this).balance;
     }
 
-    // Check-in day (just enter uint > 0 for now)
-    function setRentalCheckin(uint _rentalCheckin) internal {
-        rentalCheckin = _rentalCheckin;
-    }
-
-    // Require rentalDays within min/max and calculate rentalTotal.
-    function setRentalDays(uint _rentalDays) internal {
-        require(_rentalDays >= DAYS_MIN && _rentalDays <= DAYS_MAX);
-        rentalDays = _rentalDays;
-        rentalTotal = RENTAL_DAILY_RATE * rentalDays;
-    }
-
     // @notice Renter reservation that ensures parameters are
     //         valid before proceeding to payment. Will initiate
     //         renter's address or, if renter re-runs the function,
@@ -185,5 +173,17 @@ contract BeachHouseRental {
         } else {
             return false;
         }
+    }
+    
+    // Check-in day (just enter uint > 0 for now)
+    function setRentalCheckin(uint _rentalCheckin) internal {
+        rentalCheckin = _rentalCheckin;
+    }
+
+    // Require rentalDays within min/max and calculate rentalTotal.
+    function setRentalDays(uint _rentalDays) internal {
+        require(_rentalDays >= DAYS_MIN && _rentalDays <= DAYS_MAX);
+        rentalDays = _rentalDays;
+        rentalTotal = RENTAL_DAILY_RATE * rentalDays;
     }
 }
